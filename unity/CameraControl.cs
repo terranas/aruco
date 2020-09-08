@@ -3,16 +3,30 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using UnityEngine;
+using System.IO;
 
 public class CameraControl : MonoBehaviour
 {
     public static string data;
     public static string resMsg;
+    public static string resMsg1;
+    public static string resMsg2;
+    public static string resMsg3;
     System.Net.Sockets.NetworkStream ns;
     System.Net.Sockets.TcpClient tcp;
 
     Vector3 pos = new Vector3(0, 0, 0);
     Vector3 rot = new Vector3(0, 0, 0);
+
+    public byte[] img = new byte[8];
+
+    public void WriteText(string txt)
+    {
+        StreamWriter sw = new StreamWriter("./LogData.txt", false); //true=追記 false=上書き
+        sw.WriteLine(txt);
+        sw.Flush();
+        sw.Close();
+    }
 
     // Use this for initialization
     void Start()
@@ -38,31 +52,49 @@ public class CameraControl : MonoBehaviour
         {
             data = Time.time.ToString();
 
-            //送信
             System.Text.Encoding enc = System.Text.Encoding.UTF8;
+
+            //送信
             byte[] sendBytes = enc.GetBytes(data + '\n');
             ns.Write(sendBytes, 0, sendBytes.Length);
 
             //受信
             System.IO.MemoryStream ms = new System.IO.MemoryStream();
-            byte[] resBytes = new byte[256];
-            int resSize = 256;
+            byte[] resBytes = new byte[1048576];
+            int resSize = 1048576;
             resSize = ns.Read(resBytes, 0, resBytes.Length);
             ms.Write(resBytes, 0, resSize);
-            resMsg = enc.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-            ms.Close();
-            resMsg = resMsg.TrimEnd('\n');
+            //resMsg = enc.GetString(ms.GetBuffer(), 0, (int)ms.Length);
+            //Debug.Log((int)ms.Length);
+            //ms.Close();
+            //resMsg = resMsg.TrimEnd('\n');
 
+            // get num
+            resMsg1 = enc.GetString(ms.GetBuffer(), 0, 8);
+            int num = int.Parse(resMsg1);
+
+            // get XYZRPY
+            resMsg2 = enc.GetString(ms.GetBuffer(), 8, num);
+
+            // get img
+            byte[] temp = ms.GetBuffer(); //, 8+num, (int)ms.Length-(8+num));
+            img = new byte[(int)ms.Length - (8 + num)];
+            Array.Copy(temp, 8 + num, img, 0, (int)ms.Length - (8 + num));
+
+            File.WriteAllBytes("./img.png", img);
+            // string text = System.Text.Encoding.UTF8.GetString(img);
+            // WriteText(text);
+
+            ms.Close();
             // パース
             // string[] separatingStrings = {"    "};
-            // string[] arr = resMsg.Split(separatingStrings, System.StringSplitOptions.RemoveEmptyEntries);
-            string[] arr = resMsg.Split();
+            // string[] arr = resMsg2.Split(separatingStrings, System.StringSplitOptions.RemoveEmptyEntries);
+            string[] arr = resMsg2.Split();
 
-
-            // Debug.Log(arr.Length);
-            // Debug.Log(arr[0]);
+            Debug.Log(arr.Length);
             if (arr.Length == 6)
             {
+
                 pos.x = -float.Parse(arr[0]);
                 pos.y = float.Parse(arr[1]);
                 pos.z = float.Parse(arr[2]);
@@ -71,19 +103,18 @@ public class CameraControl : MonoBehaviour
                 rot.z = -float.Parse(arr[5]) + 180.0f;
                 transform.position = pos;
                 transform.rotation = Quaternion.Euler(rot);
+
+                //Debug.Log(arr[6]);
+                //WriteText(arr[6]);
             }
-            // System.IO.MemoryStream ms2 = new System.IO.MemoryStream();
-            // byte[] resBytes2 = new byte[10000000];
-            // int resSize2 = 10000000;
-            // resSize2 = ns.Read(resBytes2, 0, resBytes2.Length);
-            // ms2.Write(resBytes2, 0, resSize2);
-            // resMsg = enc.GetString(ms2.GetBuffer(), 0, (int)ms2.Length);
-            // ms2.Close();
-            // resMsg = resMsg.TrimEnd('\n');
+        }
+        catch (FormatException e)
+        {
+            Debug.Log(e);
         }
         finally
         {
-            Debug.Log("?????");
+            Debug.Log("finally");
         }
     }
 }
