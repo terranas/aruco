@@ -2,20 +2,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using System;
+using System.Diagnostics;
 
 public class ControlBillboard : MonoBehaviour
 {
     Camera mainCamera;
-
+    CameraControl script;
 
     byte[] ReadFile(string path)
     {
         FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
         BinaryReader bin = new BinaryReader(fileStream);
         byte[] values = bin.ReadBytes((int)bin.BaseStream.Length);
-
         bin.Close();
-
         return values;
     }
 
@@ -23,18 +23,27 @@ public class ControlBillboard : MonoBehaviour
     void Start()
     {
         mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
+        script = GameObject.Find("Main Camera").GetComponent<CameraControl>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        this.transform.rotation = this.mainCamera.transform.rotation;
-        transform.Rotate(new Vector3(90, 0, 180));
+        if (script.flag == true)
+        {
+            script.flag = false;
 
-        byte[] readBinary = ReadFile("./img.png");
-        Texture2D texture = new Texture2D(1, 1);
-        texture.LoadImage(readBinary);
+            this.transform.rotation = this.mainCamera.transform.rotation;
+            transform.Rotate(new Vector3(90, 0, 180));
 
-        GetComponent<Renderer>().material.mainTexture = texture;
+            byte[] readBinary = ReadFile("./img.png");
+            Texture2D texture = new Texture2D(1, 1);
+            texture.LoadImage(readBinary);
+
+            if (texture.width == 200)
+            {
+                GetComponent<Renderer>().material.mainTexture = texture;
+            } 
+        }
     }
 }

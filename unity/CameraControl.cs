@@ -7,16 +7,17 @@ using System.IO;
 
 public class CameraControl : MonoBehaviour
 {
-    public static string data;
-    public static string resMsg;
-    public static string resMsg1;
-    public static string resMsg2;
-    public static string resMsg3;
+    static string data;
+    static string resMsg1;
+    static string resMsg2;
     System.Net.Sockets.NetworkStream ns;
     System.Net.Sockets.TcpClient tcp;
 
     Vector3 pos = new Vector3(0, 0, 0);
     Vector3 rot = new Vector3(0, 0, 0);
+    int t = 0;
+
+    public bool flag = true;
 
     public byte[] img = new byte[8];
 
@@ -36,7 +37,7 @@ public class CameraControl : MonoBehaviour
 
         //TcpClientを作成し、サーバーと接続
         tcp = new System.Net.Sockets.TcpClient(ipOrHost, port);
-        Debug.Log("サーバー({0}:{1})と接続しました。" +
+        Debug.Log("接続しました。" +
             ((System.Net.IPEndPoint)tcp.Client.RemoteEndPoint).Address + "," +
             ((System.Net.IPEndPoint)tcp.Client.RemoteEndPoint).Port + "," +
             ((System.Net.IPEndPoint)tcp.Client.LocalEndPoint).Address + "," +
@@ -50,8 +51,7 @@ public class CameraControl : MonoBehaviour
     {
         try
         {
-            data = Time.time.ToString();
-
+            data = t.ToString();
             System.Text.Encoding enc = System.Text.Encoding.UTF8;
 
             //送信
@@ -64,10 +64,6 @@ public class CameraControl : MonoBehaviour
             int resSize = 1048576;
             resSize = ns.Read(resBytes, 0, resBytes.Length);
             ms.Write(resBytes, 0, resSize);
-            //resMsg = enc.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-            //Debug.Log((int)ms.Length);
-            //ms.Close();
-            //resMsg = resMsg.TrimEnd('\n');
 
             // get num
             resMsg1 = enc.GetString(ms.GetBuffer(), 0, 8);
@@ -80,21 +76,14 @@ public class CameraControl : MonoBehaviour
             byte[] temp = ms.GetBuffer(); //, 8+num, (int)ms.Length-(8+num));
             img = new byte[(int)ms.Length - (8 + num)];
             Array.Copy(temp, 8 + num, img, 0, (int)ms.Length - (8 + num));
-
             File.WriteAllBytes("./img.png", img);
-            // string text = System.Text.Encoding.UTF8.GetString(img);
-            // WriteText(text);
 
             ms.Close();
-            // パース
-            // string[] separatingStrings = {"    "};
-            // string[] arr = resMsg2.Split(separatingStrings, System.StringSplitOptions.RemoveEmptyEntries);
             string[] arr = resMsg2.Split();
 
-            Debug.Log(arr.Length);
+            // Debug.Log(arr.Length);
             if (arr.Length == 6)
             {
-
                 pos.x = -float.Parse(arr[0]);
                 pos.y = float.Parse(arr[1]);
                 pos.z = float.Parse(arr[2]);
@@ -103,18 +92,16 @@ public class CameraControl : MonoBehaviour
                 rot.z = -float.Parse(arr[5]) + 180.0f;
                 transform.position = pos;
                 transform.rotation = Quaternion.Euler(rot);
-
-                //Debug.Log(arr[6]);
-                //WriteText(arr[6]);
             }
+            flag = true;
         }
         catch (FormatException e)
         {
             Debug.Log(e);
         }
-        finally
+        catch (OverflowException e)
         {
-            Debug.Log("finally");
+            Debug.Log(e);
         }
     }
 }
